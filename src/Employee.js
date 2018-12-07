@@ -4,6 +4,9 @@ import ReactTable from "react-table";
 import "react-table/react-table.css";
 import axios from "axios";
 import debounce from "lodash/debounce";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import moment from 'moment'
 
 class Employee extends React.Component {
   constructor(props) {
@@ -13,18 +16,30 @@ class Employee extends React.Component {
       dep_data: {},
       isLoading: false,
       filterState: {},
-      pages: null
+      pages: -1
     };
   }
 
   handleChange = (onChange, identifier) => {
     return e => {
-      this.setState({
-        filterState: {
-          ...this.state.filterState,
-          [identifier]: e.target.value
-        }
-      });
+      console.log(moment(e._d));
+      if (identifier === "doj") {
+        this.setState({
+          filterState: {
+            ...this.state.filterState,
+            [identifier]: moment(e._d).format('YYYY-MM-DD')
+          }
+        });
+      }
+
+      else {
+        this.setState({
+          filterState: {
+            ...this.state.filterState,
+            [identifier]: e.target.value
+          }
+        });
+      }
       onChange();
     };
   };
@@ -43,80 +58,67 @@ class Employee extends React.Component {
     return defaultValue;
   };
 
-  fetchDepartmentDetails = var2 => {
-    if (!this.state.dep_data[var2]) {
-      axios
-        .get(var2)
-        .then(json => {
-          const data1 = json.data;
-          this.setState({
-            dep_data: { ...this.state.dep_data, [var2]: data1 }
-          });
-        })
-        .catch(function(error) {
-          console.log(error);
-        });
+  fetchDepartmentDetails = async deptId => {
+    if (!this.state.dep_data[deptId]) {
+      const json = await axios.get(deptId);
+      const deptData = json.data;
+      this.setState({
+        dep_data: { ...this.state.dep_data, [deptId]: deptData }
+      });
     }
   };
 
-  fetchGridData = debounce((state, instance) => {
+  fetchGridData = debounce(async (state, instance) => {
     let url = "";
     const params = {
       page: state.page,
       size: state.pageSize,
       sort: state.sorted["0"]
         ? state.sorted["0"].id +
-          "," +
-          (state.sorted["0"].desc === false ? "desc" : "asc")
+        "," +
+        (state.sorted["0"].desc === false ? "desc" : "asc")
         : "empid"
     };
-    if (Object.keys(this.state.filterState).length !== 0) {
+
+
+    const filterKeys = Object.keys(this.state.filterState);
+    if (filterKeys.length !== 0) {
       url = "/search/byadvsearch?advsearch=( ";
-      let count = 0;
-      for (let key in this.state.filterState) {
-        if (this.state.filterState.hasOwnProperty(key)) {
-          let val = this.state.filterState[key];
-          count++;
-          if (count === 1) url += key + ":" + val;
-          else url += "and" + key + ":" + val;
-        }
-      }
+      url += filterKeys
+        .map(key => {
+          return this.state.filterState[key]
+            ? key + ":" + this.state.filterState[key]
+            : "";
+        })
+        .join(" and ");
       url += " )";
     }
     this.setState({ isLoading: true });
     console.log(state);
     console.log(instance);
-    axios
-      .get("https://spring-employee.herokuapp.com/employees" + url, {
-        params
-      })
-      .then(json =>
-        json.data.content.map(result => ({
-          empid: result.empid,
-          empname: result.empname,
-          skill: result.skill,
-          salary: result.salary,
-          grade: result.grade,
-          city: result.city,
-          country: result.country,
-          doj: result.doj,
-          designation: result.designation,
-          DeptName: result.deptid.deptname,
-          Dep_head: result.deptid
-        }))
-      )
-
-      .then(newData =>
-        this.setState({
-          ...this.state,
-          emp_data: newData,
-          isLoading: false
-        })
-      )
-
-      .catch(function(error) {
-        console.log(error);
-      });
+    const json = await axios.get(
+      "https://spring-employee.herokuapp.com/employees" + url,
+      { params }
+    );
+    const newData = json.data.content.map(result => ({
+      empid: result.empid,
+      empname: result.empname,
+      skill: result.skill,
+      salary: result.salary,
+      grade: result.grade,
+      city: result.city,
+      country: result.country,
+      doj: result.doj,
+      designation: result.designation,
+      DeptName: result.deptid.deptname,
+      Dep_head: result.deptid
+    }));
+    this.setState({
+      ...this.state,
+      emp_data: newData,
+      isLoading: false,
+      pages: json.data.page.totalPages
+    });
   }, 500);
 
   render() {
@@ -128,6 +130,9 @@ class Employee extends React.Component {
           freezeWhenExpanded={true}
           filterable
           pages={pages}
+          showPagination={true}
+          showPaginationTop={true}
+          showPaginationBottom={true}
           manual
           minRows={0}
           loading={isLoading}
@@ -186,13 +191,10 @@ class Employee extends React.Component {
               Header: "DOJ",
               accessor: "doj",
               Filter: ({ filter, onChange }) => (
-                <input
-                  type="text"
-                  size="8"
+                <DatePicker
+                  placeholderText="Select a date"
                   onChange={this.handleChange(onChange, "doj")}
-                  value={
-                    this.state.filterState.DOJ ? this.state.filterState.DOJ : ""
-                  }
+                  value={this.state.filterState.doj ? this.state.filterState.doj : ""}
                 />
               )
             },
@@ -289,6 +291,14 @@ class Employee extends React.Component {
               }
             };
           }}
+          getTheadFilterThProps={
+            () => {
+              return {
+                style:
+                  { position: "inherit", overflow: "inherit" }
+              }
+            }
+          }
           SubComponent={rows => {
             const dep = rows.original.Dep_head.depthead;
 

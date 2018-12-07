@@ -9,11 +9,11 @@ body {
 }
 
 /* hide Pagination controls */
-span.-pageInfo,
+/* span.-pageInfo,
 .-previous,
 .-next {
   display: none !important;
-}
+} */
 .rt-th input {
   width: 100%;
 }

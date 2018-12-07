@@ -1,6 +1,5 @@
 import React from "react";
 import ReactTable from "react-table";
-//import { rows2 } from "./Utils";
 import "react-table/react-table.css";
 import axios from "axios";
 import "./index.css";
@@ -47,8 +46,8 @@ class Department extends React.Component {
       size: state.pageSize,
       sort: state.sorted["0"]
         ? state.sorted["0"].id +
-          "," +
-          (state.sorted["0"].desc === false ? "desc" : "asc")
+        "," +
+        (state.sorted["0"].desc === false ? "desc" : "asc")
         : "deptid"
     };
     if (Object.keys(this.state.filterState).length !== 0) {
@@ -87,7 +86,7 @@ class Department extends React.Component {
         })
       )
 
-      .catch(function(error) {
+      .catch(function (error) {
         console.log(error);
       });
   }, 500);
